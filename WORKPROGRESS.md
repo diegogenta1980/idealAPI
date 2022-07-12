@@ -6,8 +6,9 @@ Each user allowed to use should register on an onboarding process, allowing logi
 <h3>Necessary Interfaces:</h3>
 * user onboarding
 * user login
-* user management (of actives, add, remove, set order)
-* list of actives of the logged user (based on identification token)
+* user management
+* asset management (of assets, CRUD, set order)
+* list of assets of the logged user (based on identification token)
 
 <h3>List of application pieces/containers (will be controled using swarm):</h3>
 * api host
