@@ -1,107 +1,74 @@
 package asset
 
 import (
-	"encoding/json"
+	"database/sql"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"os"
-	"sort"
-	"sync"
+
+	"github.com/diegogenta1980/idealAPI/database"
 )
 
-//mutex necessary, map not thread safe
-var assetMap = struct {
-	sync.RWMutex
-	m map[int]Asset
-}{m: make(map[int]Asset)}
-
-func init() {
-	fmt.Println("loading assets...")
-
-	assMap, err := loadAssetMap()
-	assetMap.m = assMap
-	if err != nil {
-		log.Fatal(err)
+func getAsset(assetID int) (*Asset, error) {
+	userid := `7a42525d-dd03-447a-b83b-ba6b8fc16bb4` //TODO passar para parâmetro da função
+	query := fmt.Sprintf(`SELECT assetid, "order", name FROM public.assets WHERE userid = '%s' AND assetid = '%d';`, userid, assetID)
+	row := database.DbConnection.QueryRow(query)
+	asset := &Asset{}
+	err := row.Scan(&asset.AssetID, &asset.Order, &asset.Name)
+	if err == sql.ErrNoRows {
+		return nil, nil
+	} else if err != nil {
+		return nil, err
 	}
-	fmt.Printf("%d actives loaded", len(assetMap.m))
+	return asset, nil
 }
 
-func loadAssetMap() (map[int]Asset, error) {
-	fileName := "assets.json"
-	_, err := os.Stat(fileName)
-	if os.IsNotExist(err) {
-		return nil, fmt.Errorf("file [%s] does not exist", fileName)
-	}
-
-	file, _ := ioutil.ReadFile(fileName)
-	activeList := make([]Asset, 0)
-	err = json.Unmarshal([]byte(file), &activeList)
+func removeAsset(assetID int) error {
+	userid := `7a42525d-dd03-447a-b83b-ba6b8fc16bb4` //TODO passar para parâmetro da função
+	query := fmt.Sprintf(`DELETE FROM public.assets where assetid = %d and userid = '%s'`, assetID, userid)
+	_, err := database.DbConnection.Query(query)
 	if err != nil {
-		log.Fatal(err)
-	}
-	actMap := make(map[int]Asset)
-	for i := 0; i < len(activeList); i++ {
-		actMap[activeList[i].AssetID] = activeList[i]
-	}
-	return actMap, nil
-}
-
-func getAsset(assetID int) *Asset {
-	assetMap.RLock()
-	defer assetMap.RUnlock() //wait until other threads release
-	if active, ok := assetMap.m[assetID]; ok {
-		return &active
+		return err
 	}
 	return nil
 }
 
-func removeAsset(assetID int) {
-	assetMap.Lock()
-	defer assetMap.Unlock()
-	delete(assetMap.m, assetID)
-}
-
-func getAssetList() []Asset {
-	assetMap.RLock()
-	actives := make([]Asset, 0, len(assetMap.m))
-	for _, value := range assetMap.m {
-		actives = append(actives, value)
+func getAssetsList() ([]Asset, error) {
+	userid := `7a42525d-dd03-447a-b83b-ba6b8fc16bb4` //TODO substituir pelo token, passado como parametro
+	query := fmt.Sprintf(`SELECT assetid, "order", name FROM public.assets WHERE userid = '%s';`, userid)
+	println(query)
+	results, err := database.DbConnection.Query(query)
+	if err != nil {
+		return nil, err
 	}
-	defer assetMap.RUnlock()
-	return actives
-}
-
-func getAssetIds() []int {
-	assetMap.RLock()
-	activeIds := []int{}
-	for key := range assetMap.m {
-		activeIds = append(activeIds, key)
+	defer results.Close()
+	assets := make([]Asset, 0)
+	for results.Next() {
+		var asset Asset
+		results.Scan(&asset.AssetID, &asset.Order, &asset.Name)
+		assets = append(assets, asset)
 	}
-	assetMap.RUnlock()
-	sort.Ints(activeIds)
-	return activeIds
+	return assets, nil
 }
 
-func getNextAssetID() int {
-	activeIDs := getAssetIds()
-	return activeIDs[len(activeIDs)-1] + 1
-}
-
-func addOrUpdateAsset(asset Asset) (int, error) {
-	addOrUpdateID := -1
-	if asset.AssetID > 0 {
-		oldActive := getAsset(asset.AssetID)
-		if oldActive == nil {
-			return 0, fmt.Errorf("ative id [%d] does not exist", asset.AssetID)
-		}
-		addOrUpdateID = asset.AssetID
-	} else {
-		addOrUpdateID = getNextAssetID()
-		asset.AssetID = addOrUpdateID
+func updateAsset(asset Asset) error {
+	userid := `7a42525d-dd03-447a-b83b-ba6b8fc16bb4` //TODO passar para parâmetro da função
+	query := fmt.Sprintf(`UPDATE public.assets SET "order"=%d WHERE assetid = %d AND userid = '%s'`, asset.Order, asset.AssetID, userid)
+	_, err := database.DbConnection.Exec(query)
+	if err != nil {
+		return err
 	}
-	assetMap.Lock()
-	assetMap.m[addOrUpdateID] = asset
-	assetMap.Unlock()
-	return addOrUpdateID, nil
+	return nil
+}
+
+func insertAsset(asset Asset) (int, error) {
+	userid := `7a42525d-dd03-447a-b83b-ba6b8fc16bb4` //TODO passar para parâmetro da função
+	query := fmt.Sprintf(`INSERT INTO public.assets (userid, "order", name) VALUES ('%s', %d, '%s')`, userid, asset.Order, asset.Name)
+	result, err := database.DbConnection.Exec(query)
+	if err != nil {
+		return 0, nil
+	}
+	insertid, err := result.LastInsertId()
+	if err != nil {
+		return 0, nil
+	}
+	return int(insertid), nil
 }

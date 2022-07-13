@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -23,10 +24,16 @@ func assetHandler(w http.ResponseWriter, r *http.Request) {
 	urlPathSegments := strings.Split(r.URL.Path, "assets/")
 	assetID, err := strconv.Atoi(urlPathSegments[len(urlPathSegments)-1])
 	if err != nil {
+		log.Print(err)
 		w.WriteHeader(http.StatusNotFound)
 		return
 	}
-	asset := getAsset(assetID)
+	asset, err := getAsset(assetID)
+	if err != nil {
+		log.Print(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
 	if asset == nil {
 		w.WriteHeader(http.StatusNotFound)
 		return
@@ -37,6 +44,7 @@ func assetHandler(w http.ResponseWriter, r *http.Request) {
 		//return a single active
 		assetJSON, err := json.Marshal(asset)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -47,11 +55,13 @@ func assetHandler(w http.ResponseWriter, r *http.Request) {
 		var updatedAsset Asset
 		bodyBytes, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err = json.Unmarshal(bodyBytes, &updatedAsset)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -59,7 +69,12 @@ func assetHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		addOrUpdateAsset(updatedAsset)
+		err = updateAsset(updatedAsset)
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
 		w.WriteHeader(http.StatusOK)
 		return
 		//todo delete, update
@@ -76,11 +91,15 @@ func assetHandler(w http.ResponseWriter, r *http.Request) {
 func assetsHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
-		println("1")
-		activeList := getAssetList()
-		println("2")
+		activeList, err := getAssetsList()
+		if err != nil {
+			log.Print(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
 		activesJson, err := json.Marshal(activeList)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
@@ -90,11 +109,13 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 		var newActive Asset
 		bodyBytes, err := ioutil.ReadAll(r.Body)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
 		err = json.Unmarshal(bodyBytes, &newActive)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
@@ -102,8 +123,9 @@ func assetsHandler(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusBadRequest)
 			return
 		}
-		_, err = addOrUpdateAsset(newActive)
+		_, err = insertAsset(newActive)
 		if err != nil {
+			log.Print(err)
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
