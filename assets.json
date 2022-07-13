@@ -1,0 +1,20 @@
+[
+	{
+		"assetId": 1,
+		"name": "PBR",
+		"price": 25.00,
+		"Order": 1
+	},
+	{
+		"assetId": 2,
+		"name": "APPL",
+		"price": 500.00,
+		"Order": 2
+	},
+	{
+		"assetId": 3,
+		"name": "GOGL",
+		"price": 250.00,
+		"Order": 3
+	}
+]

@@ -1,0 +1,43 @@
+version: '3.4'
+
+services:
+  api:
+    image: apiimg:1.0 # nome da imagem que será construída
+    container_name: apicontainer
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      -  "3000:3000"
+    networks:
+      -  isolated_network
+    depends_on:
+      -  postgresdb
+    env_file:
+      -  .env.secrets
+
+  postgresdb:
+    container_name: postgrescont
+    image: postgresimg:1.0
+    build:
+      context: .
+      dockerfile: PostgresDB/dockerfile
+    restart: always
+    ports:
+      -  "5432:5432"
+    networks:
+      -  isolated_network
+    volumes:
+      -  postgres-volume:/var/lib/postgresql/data
+    environment:
+      POSTGRES_DB: assetsdb
+    env_file:
+      -  .env.secrets
+
+networks:
+  isolated_network:
+    driver: bridge
+
+volumes:
+  postgres-volume:
+    external: true
