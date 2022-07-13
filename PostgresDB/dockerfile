@@ -1,0 +1,15 @@
+# FROM postgres:latest
+
+# ARG PROJECT_DIR=/tmp/devdatabase
+# RUN mkdir -p $PROJECT_DIR
+# WORKDIR $PROJECT_DIR
+# COPY PostgresDB/InitializeDatabase.sql ./
+# COPY PostgresDB/wait-for-it.sql ./
+# COPY PostgresDB/entrypoint.sql ./
+# COPY PostgresDB/setup.sql ./
+
+# CMD ["/bin/bash", "entrypoint.sh"]
+FROM postgres:latest
+#ENV POSTGRES_PASSWORD docker
+#ENV POSTGRES_DB apimanager
+# COPY world.sql /docker-entrypoint-initdb.d/
